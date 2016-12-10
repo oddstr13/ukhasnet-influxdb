@@ -5,7 +5,7 @@ authors = ["Adam Greig <adam@adamgreig.com>"]
 readme = "README.md"
 
 [dependencies]
-ukhasnet-parser = {version="0.3.0", path="/root/ukhasnet/ukhasnet-parser"}
+ukhasnet-parser = {version="0.3.0", git="https://github.com/adamgreig/ukhasnet-parser.git", rev="trypest"}
 rustc-serialize = "0.3.18"
 hyper = "0.8.0"
 time = "0.1"
