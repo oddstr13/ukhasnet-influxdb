@@ -1,12 +1,12 @@
 [package]
 name = "ukhasnet-influxdb"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Adam Greig <adam@adamgreig.com>"]
 readme = "README.md"
 
 [dependencies]
-ukhasnet-parser = "0.2.4"
-rustc-serialize = "0.3"
+ukhasnet-parser = {version="0.3.0", path="/root/ukhasnet/ukhasnet-parser"}
+rustc-serialize = "0.3.18"
 hyper = "0.8.0"
 time = "0.1"
 toml = "0.1"

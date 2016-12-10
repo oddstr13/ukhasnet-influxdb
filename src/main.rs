@@ -16,7 +16,7 @@ use std::thread::sleep;
 use rustc_serialize::Decodable;
 
 use rustc_serialize::json;
-use ukhasnet_parser::{parse, DataField, Packet, Done, Error, Incomplete};
+use ukhasnet_parser::{parse, DataField, Packet};
 use hyper::client::Client;
 use hyper::header::{Headers, Authorization, Basic};
 
@@ -45,6 +45,7 @@ struct UkhasnetConfig {
 #[derive(Debug,RustcDecodable)]
 struct InfluxDBConfig {
     url: String,
+    db: String,
     username: String,
     password: String,
 }
@@ -91,6 +92,12 @@ fn packet_to_influx(sm: &SocketMessage, p: &Packet) -> Result<String, String> {
         format!("packet,gateway={},node={},pathend={} gw_rssi={}i",
                 sm.nn, node, pathend, sm.r));
 
+        match p.comment {
+            Some(ref a) => line.push_str(&format!(",comment=\"{}\"", a)),
+            None => ()
+        }
+
+
     let mut temperature_count = 0;
     let mut voltage_count = 0;
     let mut current_count = 0;
@@ -103,7 +110,7 @@ fn packet_to_influx(sm: &SocketMessage, p: &Packet) -> Result<String, String> {
     let mut location_count = 0;
     let mut windspeed_count = 0;
     let mut zombie_count = 0;
-    let mut comment_count = 0;
+//    let mut comment_count = 0;
 
     fn numeric_field(name: &str, d: &Vec<f32>, c: i32, field: &mut String) {
         let mut cc = 0;
@@ -153,11 +160,18 @@ fn packet_to_influx(sm: &SocketMessage, p: &Packet) -> Result<String, String> {
             },
             &DataField::Location(ref l) => {
                 location_count += 1;
-                line.push_str(&format!(",location_{}_latitude={}",
-                                      location_count, l.latitude));
-                line.push_str(&format!(",location_{}_longitude={}",
-                                      location_count, l.longitude));
-                match l.altitude {
+                match l.latlng {
+                    Some(a) => {
+                        line.push_str(
+                            &format!(",location_{}_latitude={}",
+                                location_count, a.0));
+                        line.push_str(
+                            &format!(",location_{}_longitude={}",
+                                location_count, a.1));
+                    }
+                    None => ()
+                }
+                match l.alt {
                     Some(a) => line.push_str(
                         &format!(",location_{}_altitude={}",
                                 location_count, a)),
@@ -166,8 +180,14 @@ fn packet_to_influx(sm: &SocketMessage, p: &Packet) -> Result<String, String> {
             },
             &DataField::WindSpeed(ref w) => {
                 windspeed_count += 1;
-                line.push_str(&format!(",windspeed_{}_speed={}",
-                                      windspeed_count, w.speed));
+
+                match w.speed {
+                    Some(a) => line.push_str(
+                        &format!(",windspeed_{}_speed={}",
+                                windspeed_count, a)),
+                    None => ()
+                }
+
                 match w.bearing {
                     Some(b) => line.push_str(
                         &format!(",windspeeed_{}_bearing={}",
@@ -179,10 +199,6 @@ fn packet_to_influx(sm: &SocketMessage, p: &Packet) -> Result<String, String> {
                 zombie_count += 1;
                 line.push_str(&format!(",zombie_{}={}i", zombie_count, z));
             },
-            &DataField::Comment(ref c) => {
-                comment_count += 1;
-                line.push_str(&format!(",comment_{}=\"{}\"", comment_count, c));
-            }
         }
     }
 
@@ -207,7 +223,8 @@ fn post_influx(line: &String, config: &InfluxDBConfig) -> Result<(), String> {
             }
         )
     );
-    match client.post(&config.url).body(line).headers(headers).send() {
+    //println!("Influx: {}", line);
+    match client.post(&format!("{}/write?db={}", config.url, config.db)).body(line).headers(headers).send() {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("Error posting to InfluxDB: {}", e))
     }
@@ -296,9 +313,12 @@ fn main() {
 
             // Parse the message into a packet
             let packet = match parse(&message.p) {
-                Done(_, p) => p,
-                Error(e) => {println!("Error parsing packet: {}", e); continue;},
-                Incomplete(_) => {println!("Packet data incomplete"); continue;}
+                Ok(p) => p,
+                Err(e) => {
+                    println!("Error parsing packet: {}", e);
+                    continue
+                },
+                //Incomplete(_) => {println!("Packet data incomplete"); continue;}
             };
 
             // Upload the packet to InfluxDB
