@@ -4,6 +4,7 @@ logfile = "ukhasnet-influxdb.log"
 socket = "ukhas.net:3020"
 
 [influxdb]
-url = "http://localhost:8086/write?db=ukhasnet"
+url = "http://localhost:8086"
+db = "ukhasnet"
 username = "username"
 password = "password"

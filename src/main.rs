@@ -47,6 +47,7 @@ struct UkhasnetConfig {
 #[derive(Debug,RustcDecodable)]
 struct InfluxDBConfig {
     url: String,
+    db: String,
     username: String,
     password: String,
 }
@@ -214,7 +215,7 @@ fn packet_to_influx(sm: &SocketMessage, p: &Packet) -> Result<String, String> {
 
 fn post_influx(client: &Client, line: &str, config: &InfluxDBConfig)
         -> Result<(), String> {
-    match client.post(&config.url)
+    match client.post(&format!("{}/write?db={}", config.url, config.db))
                 .body(line)
                 .header(Authorization(Basic {
                     username: config.username.to_owned(),

@@ -5,7 +5,7 @@ authors = ["Adam Greig <adam@adamgreig.com>"]
 readme = "README.md"
 
 [dependencies]
-ukhasnet-parser = "0.4"
+ukhasnet-parser = { git = "https://github.com/oddstr13/ukhasnet-parser", branch = "oddmode" }
 rustc-serialize = "0.3"
 reqwest = "0.4"
 time = "0.1"
